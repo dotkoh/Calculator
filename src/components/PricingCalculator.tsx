@@ -32,22 +32,16 @@ function formatUSD(value: number): string {
   return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(value);
 }
 
-/* ── Bot MD Logo SVG ── */
-function BotMDLogo({ size = 48 }: { size?: number }) {
+/* ── Bot MD Logo (actual image) ── */
+function BotMDLogo({ height = 48 }: { height?: number }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <ellipse cx="50" cy="55" rx="36" ry="40" fill="#1E2A3A" />
-      <ellipse cx="50" cy="58" rx="28" ry="32" fill="#F5D5C0" />
-      <ellipse cx="35" cy="64" rx="5" ry="3" fill="#E8B9A0" opacity="0.5" />
-      <ellipse cx="65" cy="64" rx="5" ry="3" fill="#E8B9A0" opacity="0.5" />
-      <circle cx="40" cy="56" r="3.2" fill="#1E2A3A" />
-      <circle cx="60" cy="56" r="3.2" fill="#1E2A3A" />
-      <path d="M42 66 Q50 74 58 66" stroke="#1E2A3A" strokeWidth="2.5" strokeLinecap="round" fill="none" />
-      <circle cx="20" cy="58" r="7" fill="white" stroke="#e5e7eb" strokeWidth="1" />
-      <circle cx="35" cy="22" r="12" fill="white" stroke="#d1d5db" strokeWidth="1.2" />
-      <rect x="31" y="16" width="8" height="12" rx="1.5" fill="#00D6C6" />
-      <rect x="29" y="19" width="12" height="6" rx="1.5" fill="#00D6C6" />
-    </svg>
+    <img
+      src="/botmd-logo.png"
+      alt="Bot MD"
+      height={height}
+      style={{ height: `${height}px`, width: "auto" }}
+      className="object-contain"
+    />
   );
 }
 
@@ -89,12 +83,8 @@ export default function PricingCalculator() {
     <div className="max-w-6xl mx-auto px-4 sm:px-6 py-10">
       {/* ── Header ── */}
       <header className="text-center mb-10">
-        <div className="flex items-center justify-center gap-3 mb-3">
-          <BotMDLogo size={48} />
-          <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight">
-            <span className="text-[var(--botmd-blue)]">bot</span>
-            <span className="text-[var(--botmd-navy)]">md</span>
-          </h1>
+        <div className="flex items-center justify-center mb-4">
+          <BotMDLogo height={56} />
         </div>
         <h2 className="text-xl sm:text-2xl font-semibold text-[var(--botmd-navy)]">Pricing Calculator</h2>
         <p className="text-gray-400 mt-2 max-w-lg mx-auto">
@@ -204,7 +194,7 @@ export default function PricingCalculator() {
             {costs && (
               <SummaryCard>
                 <h3 className="font-semibold text-[var(--botmd-navy)] text-sm mb-3 flex items-center gap-2">
-                  <BotMDLogo size={20} />
+                  <BotMDLogo height={22} />
                   Bot MD Fees
                 </h3>
                 <p className="text-[10px] text-gray-400 uppercase tracking-widest mb-1">Messaging</p>
