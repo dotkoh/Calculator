@@ -22,15 +22,6 @@ function buildMarketOptions() {
     group: "Southeast Asia",
   }));
 
-  const otherOptions = whatsappRates
-    .filter((r) => !Object.values(seAsiaMarketMap).includes(r.market) || !["Indonesia", "Malaysia"].includes(r.market))
-    .map((r) => ({
-      label: r.market,
-      value: r.market,
-      whatsappMarket: r.market,
-      group: "All Markets",
-    }));
-
   // Deduplicate: remove markets already covered by SE Asia individual entries
   const seAsiaWhatsappMarkets = new Set(Object.values(seAsiaMarketMap));
   const filteredOther = whatsappRates
@@ -54,6 +45,33 @@ function formatUSD(value: number): string {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   }).format(value);
+}
+
+// Bot MD nurse character SVG (matches logo)
+function BotMDLogo({ size = 48 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+      {/* Hair */}
+      <ellipse cx="50" cy="55" rx="36" ry="40" fill="#2D3148" />
+      {/* Face */}
+      <ellipse cx="50" cy="58" rx="28" ry="32" fill="#F5D5C0" />
+      {/* Blush */}
+      <ellipse cx="35" cy="64" rx="5" ry="3" fill="#E8B9A0" opacity="0.6" />
+      <ellipse cx="65" cy="64" rx="5" ry="3" fill="#E8B9A0" opacity="0.6" />
+      {/* Eyes */}
+      <circle cx="40" cy="56" r="3" fill="#2D3148" />
+      <circle cx="60" cy="56" r="3" fill="#2D3148" />
+      {/* Smile */}
+      <path d="M42 66 Q50 74 58 66" stroke="#2D3148" strokeWidth="2.5" strokeLinecap="round" fill="none" />
+      {/* Ear (left) */}
+      <circle cx="20" cy="58" r="7" fill="white" stroke="#e5e7eb" strokeWidth="1" />
+      {/* Medical headband circle */}
+      <circle cx="35" cy="22" r="12" fill="white" stroke="#e5e7eb" strokeWidth="1.5" />
+      {/* Medical cross */}
+      <rect x="31" y="16" width="8" height="12" rx="1.5" fill="#6EC6C8" />
+      <rect x="29" y="19" width="12" height="6" rx="1.5" fill="#6EC6C8" />
+    </svg>
+  );
 }
 
 export default function PricingCalculator() {
@@ -142,13 +160,11 @@ export default function PricingCalculator() {
       {/* Header */}
       <div className="text-center mb-8">
         <div className="flex items-center justify-center gap-3 mb-2">
-          <div className="w-10 h-10 bg-[var(--botmd-blue)] rounded-xl flex items-center justify-center">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 15h2v-2h-2v2zm0-4h2V7h-2v6z" fill="white"/>
-            </svg>
-          </div>
-          <h1 className="text-3xl font-bold text-gray-900">
-            Bot MD <span className="text-[var(--botmd-blue)]">Pricing Calculator</span>
+          <BotMDLogo size={52} />
+          <h1 className="text-3xl font-bold">
+            <span className="text-[var(--botmd-teal)]">bot</span>
+            <span className="text-[var(--botmd-navy)]">md</span>
+            <span className="text-[var(--botmd-navy)] ml-2">Pricing Calculator</span>
           </h1>
         </div>
         <p className="text-gray-500 text-lg">
@@ -161,7 +177,7 @@ export default function PricingCalculator() {
         <div className="lg:col-span-2 space-y-6">
           {/* Market Selection */}
           <section className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-            <h2 className="text-lg font-semibold text-gray-900 mb-1 flex items-center gap-2">
+            <h2 className="text-lg font-semibold text-[var(--botmd-navy)] mb-1 flex items-center gap-2">
               <span className="text-xl">🌏</span> Market / Country
             </h2>
             <p className="text-sm text-gray-500 mb-4">
@@ -170,7 +186,7 @@ export default function PricingCalculator() {
             <select
               value={selectedMarket}
               onChange={(e) => setSelectedMarket(e.target.value)}
-              className="w-full border border-gray-200 rounded-xl px-4 py-3 text-gray-900 bg-gray-50 focus:ring-2 focus:ring-[var(--botmd-blue)] focus:border-transparent outline-none text-base"
+              className="w-full border border-gray-200 rounded-xl px-4 py-3 text-[var(--botmd-navy)] bg-gray-50 focus:ring-2 focus:ring-[var(--botmd-teal)] focus:border-transparent outline-none text-base"
             >
               <optgroup label="Southeast Asia">
                 {seAsiaOptions.map((o) => (
@@ -189,13 +205,13 @@ export default function PricingCalculator() {
             </select>
             {rate && (
               <div className="mt-3 flex flex-wrap gap-3 text-xs">
-                <span className="bg-blue-50 text-blue-700 px-3 py-1 rounded-full">
+                <span className="bg-rose-50 text-rose-700 px-3 py-1 rounded-full">
                   Marketing: {formatUSD(rate.marketing)}/msg
                 </span>
-                <span className="bg-green-50 text-green-700 px-3 py-1 rounded-full">
+                <span className="bg-teal-50 text-teal-700 px-3 py-1 rounded-full">
                   Utility: {formatUSD(rate.utility)}/msg
                 </span>
-                <span className="bg-purple-50 text-purple-700 px-3 py-1 rounded-full">
+                <span className="bg-violet-50 text-violet-700 px-3 py-1 rounded-full">
                   Auth: {formatUSD(rate.authentication)}/msg
                 </span>
                 <span className="bg-gray-50 text-gray-500 px-3 py-1 rounded-full">
@@ -207,7 +223,7 @@ export default function PricingCalculator() {
 
           {/* WhatsApp Message Volumes */}
           <section className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-            <h2 className="text-lg font-semibold text-gray-900 mb-1 flex items-center gap-2">
+            <h2 className="text-lg font-semibold text-[var(--botmd-navy)] mb-1 flex items-center gap-2">
               <span className="text-xl">💬</span> Monthly WhatsApp Message Volume
             </h2>
             <p className="text-sm text-gray-500 mb-4">
@@ -220,21 +236,21 @@ export default function PricingCalculator() {
                 sublabel="Promos, campaigns, blasts"
                 value={marketingMessages}
                 onChange={setMarketingMessages}
-                color="blue"
+                color="rose"
               />
               <NumberInput
                 label="Utility Templates"
                 sublabel="Reminders, confirmations"
                 value={utilityMessages}
                 onChange={setUtilityMessages}
-                color="green"
+                color="teal"
               />
               <NumberInput
                 label="Authentication Templates"
                 sublabel="OTPs, verification codes"
                 value={authMessages}
                 onChange={setAuthMessages}
-                color="purple"
+                color="violet"
               />
               <NumberInput
                 label="Service (Free-form) Messages"
@@ -245,12 +261,12 @@ export default function PricingCalculator() {
               />
             </div>
 
-            <div className="mt-5 p-4 bg-green-50 rounded-xl border border-green-100">
+            <div className="mt-5 p-4 bg-teal-50 rounded-xl border border-teal-100">
               <div className="flex items-center justify-between mb-2">
-                <label className="text-sm font-medium text-green-800">
+                <label className="text-sm font-medium text-teal-800">
                   % of Utility messages sent within 24hr customer service window (free)
                 </label>
-                <span className="text-sm font-bold text-green-700">{utilityFreePercent}%</span>
+                <span className="text-sm font-bold text-teal-700">{utilityFreePercent}%</span>
               </div>
               <input
                 type="range"
@@ -259,9 +275,9 @@ export default function PricingCalculator() {
                 step={5}
                 value={utilityFreePercent}
                 onChange={(e) => setUtilityFreePercent(Number(e.target.value))}
-                className="w-full accent-green-600"
+                className="w-full"
               />
-              <p className="text-xs text-green-600 mt-1">
+              <p className="text-xs text-teal-600 mt-1">
                 Utility and service messages in response to a user within 24hrs are free from WhatsApp.
               </p>
             </div>
@@ -269,7 +285,7 @@ export default function PricingCalculator() {
 
           {/* AI Agent Usage */}
           <section className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-            <h2 className="text-lg font-semibold text-gray-900 mb-1 flex items-center gap-2">
+            <h2 className="text-lg font-semibold text-[var(--botmd-navy)] mb-1 flex items-center gap-2">
               <span className="text-xl">🤖</span> Monthly AI Agent Replies
             </h2>
             <p className="text-sm text-gray-500 mb-4">
@@ -313,12 +329,15 @@ export default function PricingCalculator() {
         <div className="lg:col-span-1">
           <div className="sticky top-6 space-y-4">
             {/* Grand Total */}
-            <div className="bg-[var(--botmd-blue)] rounded-2xl p-6 text-white shadow-lg">
-              <p className="text-sm text-blue-200 font-medium">Estimated Monthly Total</p>
+            <div className="bg-[var(--botmd-navy)] rounded-2xl p-6 text-white shadow-lg">
+              <div className="flex items-center gap-2 mb-1">
+                <BotMDLogo size={28} />
+                <p className="text-sm text-gray-300 font-medium">Estimated Monthly Total</p>
+              </div>
               <p className="text-4xl font-bold mt-1">
                 {costs ? formatUSD(costs.grandTotal) : "—"}
               </p>
-              <p className="text-xs text-blue-200 mt-2">
+              <p className="text-xs text-gray-400 mt-2">
                 Based on your selected market and volumes
               </p>
             </div>
@@ -326,7 +345,7 @@ export default function PricingCalculator() {
             {/* WhatsApp Fees Breakdown */}
             {costs && (
               <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
-                <h3 className="font-semibold text-gray-900 text-sm mb-3 flex items-center gap-2">
+                <h3 className="font-semibold text-[var(--botmd-navy)] text-sm mb-3 flex items-center gap-2">
                   <svg width="20" height="20" viewBox="0 0 24 24" fill="#25D366">
                     <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/>
                     <path d="M12 2C6.477 2 2 6.477 2 12c0 1.89.525 3.66 1.438 5.168L2 22l4.832-1.438A9.955 9.955 0 0012 22c5.523 0 10-4.477 10-10S17.523 2 12 2z"/>
@@ -352,10 +371,8 @@ export default function PricingCalculator() {
             {/* Bot MD Fees Breakdown */}
             {costs && (
               <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
-                <h3 className="font-semibold text-gray-900 text-sm mb-3 flex items-center gap-2">
-                  <div className="w-5 h-5 bg-[var(--botmd-blue)] rounded flex items-center justify-center">
-                    <span className="text-white text-xs font-bold">B</span>
-                  </div>
+                <h3 className="font-semibold text-[var(--botmd-navy)] text-sm mb-3 flex items-center gap-2">
+                  <BotMDLogo size={22} />
                   Bot MD Fees
                 </h3>
 
@@ -390,11 +407,11 @@ export default function PricingCalculator() {
             {/* Visual Split */}
             {costs && costs.grandTotal > 0 && (
               <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
-                <h3 className="font-semibold text-gray-900 text-sm mb-3">Cost Split</h3>
+                <h3 className="font-semibold text-[var(--botmd-navy)] text-sm mb-3">Cost Split</h3>
                 <div className="space-y-3">
                   <CostBar label="WhatsApp Fees" amount={costs.whatsappTotal} total={costs.grandTotal} color="bg-green-500" />
-                  <CostBar label="Bot MD Messaging" amount={costs.botmdMessaging} total={costs.grandTotal} color="bg-blue-400" />
-                  <CostBar label="Bot MD AI Credits" amount={costs.botmdAICredits} total={costs.grandTotal} color="bg-[var(--botmd-blue)]" />
+                  <CostBar label="Bot MD Messaging" amount={costs.botmdMessaging} total={costs.grandTotal} color="bg-[var(--botmd-teal)]" />
+                  <CostBar label="Bot MD AI Credits" amount={costs.botmdAICredits} total={costs.grandTotal} color="bg-[var(--botmd-navy)]" />
                 </div>
               </div>
             )}
@@ -428,21 +445,21 @@ function NumberInput({
   color: string;
 }) {
   const colorMap: Record<string, string> = {
-    blue: "border-l-blue-400",
-    green: "border-l-green-400",
-    purple: "border-l-purple-400",
+    rose: "border-l-rose-400",
+    teal: "border-l-teal-400",
+    violet: "border-l-violet-400",
     gray: "border-l-gray-300",
   };
   return (
     <div className={`bg-gray-50 rounded-xl p-4 border-l-4 ${colorMap[color] || "border-l-gray-300"}`}>
-      <label className="text-sm font-medium text-gray-700 block">{label}</label>
+      <label className="text-sm font-medium text-[var(--botmd-navy)] block">{label}</label>
       <p className="text-xs text-gray-400 mb-2">{sublabel}</p>
       <input
         type="number"
         min={0}
         value={value}
         onChange={(e) => onChange(Math.max(0, Number(e.target.value)))}
-        className="w-full border border-gray-200 rounded-lg px-3 py-2 text-gray-900 bg-white focus:ring-2 focus:ring-[var(--botmd-blue)] focus:border-transparent outline-none"
+        className="w-full border border-gray-200 rounded-lg px-3 py-2 text-[var(--botmd-navy)] bg-white focus:ring-2 focus:ring-[var(--botmd-teal)] focus:border-transparent outline-none"
       />
     </div>
   );
@@ -464,8 +481,8 @@ function AgentInput({
   return (
     <div className="bg-gray-50 rounded-xl p-4 border border-gray-100">
       <div className="flex items-center justify-between mb-1">
-        <label className="text-sm font-medium text-gray-700">{label}</label>
-        <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-medium">
+        <label className="text-sm font-medium text-[var(--botmd-navy)]">{label}</label>
+        <span className="text-xs bg-[#e8f6f6] text-[var(--botmd-teal-dark)] px-2 py-0.5 rounded-full font-medium">
           {credits} {credits === 1 ? "credit" : "credits"}
         </span>
       </div>
@@ -475,7 +492,7 @@ function AgentInput({
         min={0}
         value={value}
         onChange={(e) => onChange(Math.max(0, Number(e.target.value)))}
-        className="w-full border border-gray-200 rounded-lg px-3 py-2 text-gray-900 bg-white focus:ring-2 focus:ring-[var(--botmd-blue)] focus:border-transparent outline-none"
+        className="w-full border border-gray-200 rounded-lg px-3 py-2 text-[var(--botmd-navy)] bg-white focus:ring-2 focus:ring-[var(--botmd-teal)] focus:border-transparent outline-none"
       />
     </div>
   );
@@ -495,12 +512,12 @@ function CostRow({
   free?: boolean;
 }) {
   return (
-    <div className={`flex items-center justify-between ${bold ? "font-semibold text-gray-900" : "text-gray-600"}`}>
+    <div className={`flex items-center justify-between ${bold ? "font-semibold text-[var(--botmd-navy)]" : "text-gray-600"}`}>
       <div>
         <span>{label}</span>
         {detail && <span className="text-xs text-gray-400 ml-1">({detail})</span>}
       </div>
-      <span className={free ? "text-green-600" : ""}>{free ? "Free" : formatUSD(amount)}</span>
+      <span className={free ? "text-[var(--botmd-teal-dark)]" : ""}>{free ? "Free" : formatUSD(amount)}</span>
     </div>
   );
 }
