@@ -2,9 +2,9 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Bot MD Pricing Calculator",
+  title: "Bot MD Messaging & AI Credit Cost Calculator",
   description:
-    "Estimate your monthly costs for WhatsApp messaging and AI agent credits with Bot MD",
+    "Estimate your monthly messaging and AI agent credit costs across WhatsApp, Messenger and Viber with Bot MD",
 };
 
 export default function RootLayout({

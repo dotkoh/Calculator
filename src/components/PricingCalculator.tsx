@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, type ReactNode } from "react";
 import { whatsappRates, seAsiaMarketMap, getRateForMarket } from "@/data/whatsappRates";
 import { VIBER_RATES_PHP, PHP_TO_USD, VIBER_RATES_USD } from "@/data/viberRates";
 
@@ -17,10 +17,53 @@ const PLANS = [
 
 type ChannelId = "whatsapp" | "messenger" | "viber";
 
-const CHANNELS: { id: ChannelId; label: string; icon: string; color: string }[] = [
-  { id: "whatsapp", label: "WhatsApp", icon: "💬", color: "border-green-400 bg-green-50/60" },
-  { id: "messenger", label: "Messenger", icon: "💙", color: "border-blue-400 bg-blue-50/60" },
-  { id: "viber", label: "Viber", icon: "💜", color: "border-purple-400 bg-purple-50/60" },
+// ── Brand Logo SVGs ──
+function WhatsAppIcon({ size = 24 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z" fill="#25D366"/>
+      <path d="M20.52 3.449C18.24 1.245 15.24 0 12.045 0 5.463 0 .104 5.334.101 11.893c-.001 2.096.546 4.142 1.587 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.579 0 11.94-5.335 11.943-11.894.002-3.176-1.234-6.165-3.473-8.413zM12.045 21.785h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.981 .999-3.648-.235-.374a9.86 9.86 0 01-1.511-5.26c.002-5.45 4.437-9.884 9.894-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.885-9.891 9.885z" fill="#25D366"/>
+    </svg>
+  );
+}
+
+function MessengerIcon({ size = 24 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <linearGradient id="messengerGrad" x1="50%" y1="0%" x2="50%" y2="100%">
+          <stop offset="0%" stopColor="#00B2FF" />
+          <stop offset="100%" stopColor="#006AFF" />
+        </linearGradient>
+      </defs>
+      <path d="M12 0C5.24 0 0 4.952 0 11.64c0 3.498 1.434 6.522 3.769 8.61a.96.96 0 01.323.683l.065 2.134a.96.96 0 001.348.851l2.382-1.05a.96.96 0 01.641-.048c1.1.303 2.27.467 3.472.467 6.76 0 12-4.952 12-11.64S18.76 0 12 0z" fill="url(#messengerGrad)"/>
+      <path d="M4.794 15.043l3.528-5.597a1.8 1.8 0 012.604-.48l2.806 2.104a.72.72 0 00.868-.002l3.788-2.874c.505-.384 1.165.222.828.762l-3.528 5.597a1.8 1.8 0 01-2.604.48l-2.806-2.103a.72.72 0 00-.868.002l-3.788 2.874c-.505.383-1.165-.223-.828-.763z" fill="#fff"/>
+    </svg>
+  );
+}
+
+function ViberIcon({ size = 24 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M20.812 2.343C20.16 1.744 17.595.276 12.467.054c0 0-6.047-.36-8.993 2.324C1.614 4.238 1.097 6.942 1.042 10.274c-.054 3.332-.124 9.578 5.858 11.188h.005l-.004 2.556s-.038.973.605 1.171c.778.24 1.236-.5 1.98-1.3.408-.44.971-1.087 1.396-1.58 3.85.323 6.812-.416 7.15-.527.782-.257 5.207-.82 5.928-6.695.744-6.058-.36-9.884-2.148-11.744zM19.96 13.427c-.607 4.912-4.13 5.173-4.767 5.382-.281.092-2.755.708-5.928.513 0 0-2.348 2.833-3.08 3.572-.115.116-.248.162-.338.14-.126-.03-.16-.173-.159-.382l.025-3.882C2.215 17.14 2.269 11.58 2.313 8.77c.044-2.81.462-5.04 1.933-6.486 2.468-2.237 7.577-1.917 7.577-1.917 4.303.186 6.606 1.427 7.153 1.931 1.495 1.558 2.47 4.838 1.83 9.728 0 0-.192 1.154-.847 1.4z" fill="#7360F2"/>
+      <path d="M13.39 5.165s2.726-.03 4.1 1.483c0 0 1.162 1.2 1.258 3.802 0 0 .055.608-.444.64-.499.03-.549-.422-.57-.618-.21-1.959-.876-3.121-1.714-3.627-1.12-.554-2.542-.575-2.577-.576-.328-.008-.52-.137-.516-.539.003-.353.2-.553.463-.565z" fill="#7360F2"/>
+      <path d="M17.004 10.817c-.066 0-.45-.004-.479-.457-.028-.454.362-.514.45-.522.67-.065.906-.643.95-1.24.025-.345.05-.727-.03-.962-.066-.188-.02-.516.453-.573.327-.04.546.171.601.432.128.595.086 1.29-.067 1.77-.323 1.009-1.148 1.51-1.878 1.552z" fill="#7360F2"/>
+      <path d="M15.086 7.43s1.636.228 1.958 2.062c0 0 .094.548-.396.614-.49.067-.58-.373-.612-.518-.184-.83-.742-1.131-1.02-1.174-.191-.03-.438-.124-.415-.54.02-.358.232-.458.485-.444z" fill="#7360F2"/>
+      <path d="M14.293 14.714l-1.235-.948a1.087 1.087 0 00-1.087-.075l-.461.245c-.44.233-.948.105-1.38-.265l-1.578-1.576c-.37-.432-.498-.94-.265-1.38l.245-.461a1.087 1.087 0 00-.076-1.088l-.947-1.234c-.523-.681-1.497-.754-2.107-.144l-.626.626c-.453.454-.639 1.111-.479 1.73.524 2.018 1.695 4.125 3.52 5.95 1.825 1.825 3.932 2.996 5.95 3.52.619.16 1.276-.026 1.73-.479l.626-.626c.61-.61.537-1.584-.144-2.107z" fill="#7360F2"/>
+    </svg>
+  );
+}
+
+const CHANNEL_ICONS: Record<ChannelId, (size: number) => ReactNode> = {
+  whatsapp: (size) => <WhatsAppIcon size={size} />,
+  messenger: (size) => <MessengerIcon size={size} />,
+  viber: (size) => <ViberIcon size={size} />,
+};
+
+const CHANNELS: { id: ChannelId; label: string; color: string }[] = [
+  { id: "whatsapp", label: "WhatsApp", color: "border-green-400 bg-green-50/60" },
+  { id: "messenger", label: "Messenger", color: "border-blue-400 bg-blue-50/60" },
+  { id: "viber", label: "Viber", color: "border-purple-400 bg-purple-50/60" },
 ];
 
 interface ChannelInputs {
@@ -242,7 +285,7 @@ export default function PricingCalculator() {
         <div className="flex items-center justify-center mb-4">
           <BotMDLogo height={56} />
         </div>
-        <h2 className="text-xl sm:text-2xl font-semibold text-[var(--botmd-navy)]">Pricing Calculator</h2>
+        <h2 className="text-xl sm:text-2xl font-semibold text-[var(--botmd-navy)]">Messaging & AI Credit Cost Calculator</h2>
         <p className="text-gray-400 mt-2 max-w-lg mx-auto">
           Estimate your monthly messaging &amp; AI agent costs across channels
         </p>
@@ -310,7 +353,7 @@ export default function PricingCalculator() {
                         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
                       </span>
                     )}
-                    <span className="text-2xl block mb-1">{ch.icon}</span>
+                    <span className="block mb-1 flex justify-center">{CHANNEL_ICONS[ch.id](28)}</span>
                     <span className={`block text-sm font-semibold ${enabled ? "text-[var(--botmd-navy)]" : "text-gray-400"}`}>{ch.label}</span>
                   </button>
                 );
@@ -348,7 +391,7 @@ export default function PricingCalculator() {
           {/* Viber rates info */}
           {enabledChannels.has("viber") && (
             <Card>
-              <SectionHeader icon="💜" title="Viber Business Rates (Philippines)" />
+              <SectionHeader icon={CHANNEL_ICONS.viber(18)} title="Viber Business Rates (Philippines)" />
               <p className="text-sm text-gray-400 mb-3">Viber rates in PHP, converted to USD at ₱56 = $1.</p>
               <div className="flex flex-wrap gap-2 text-xs">
                 <Pill color="cyan">Session: {fmtPhp(VIBER_RATES_PHP.session)}/session</Pill>
@@ -373,7 +416,7 @@ export default function PricingCalculator() {
                         : "text-gray-400 hover:text-gray-600"
                     }`}
                   >
-                    {ch.icon} {ch.label}
+                    <span className="inline-flex items-center gap-1.5">{CHANNEL_ICONS[ch.id](16)} {ch.label}</span>
                   </button>
                 ))}
               </div>
@@ -511,7 +554,7 @@ export default function PricingCalculator() {
                   if (!cc) return null;
                   return (
                     <div key={ch.id} className="mb-4 last:mb-0">
-                      <p className="text-[10px] text-gray-400 uppercase tracking-widest mb-1">{ch.icon} {ch.label}</p>
+                      <p className="text-[10px] text-gray-400 uppercase tracking-widest mb-1 flex items-center gap-1">{CHANNEL_ICONS[ch.id](12)} {ch.label}</p>
                       <div className="space-y-1.5 text-sm">
                         {cc.channelFeeDetails.map((d, i) => (
                           <CostRow key={i} label={d.label} detail={`${num(d.count)} msgs`} amount={d.amount} free={d.amount === 0 && d.label !== "No channel fees"} />
@@ -553,7 +596,7 @@ export default function PricingCalculator() {
                     if (!cc) return null;
                     return (
                       <div key={ch.id}>
-                        <p className="text-[10px] text-gray-400 uppercase tracking-widest mb-1">{ch.icon} {ch.label}</p>
+                        <p className="text-[10px] text-gray-400 uppercase tracking-widest mb-1 flex items-center gap-1">{CHANNEL_ICONS[ch.id](12)} {ch.label}</p>
                         <CostRow label="Coordinating" detail={`${num(cc.coordCredits)} cr`} amount={cc.coordCredits * CREDIT_PRICE} />
                         <CostRow label="FAQ" detail={`${num(cc.faqCredits)} cr`} amount={cc.faqCredits * CREDIT_PRICE} />
                         <CostRow label="Scheduling" detail={`${num(cc.schedCredits)} cr`} amount={cc.schedCredits * CREDIT_PRICE} />
@@ -634,7 +677,7 @@ function Card({ children }: { children: React.ReactNode }) {
 function SummaryCard({ children }: { children: React.ReactNode }) {
   return <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">{children}</div>;
 }
-function SectionHeader({ icon, title }: { icon: string; title: string }) {
+function SectionHeader({ icon, title }: { icon: ReactNode; title: string }) {
   return <h2 className="text-base font-semibold text-[var(--botmd-navy)] mb-1 flex items-center gap-2"><span className="text-lg">{icon}</span> {title}</h2>;
 }
 function Pill({ children, color }: { children: React.ReactNode; color: string }) {
