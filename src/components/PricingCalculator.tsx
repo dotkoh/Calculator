@@ -669,14 +669,34 @@ function Divider() {
 function BigNumberInput({ label, value, onChange }: {
   label: string; value: number; onChange: (v: number) => void;
 }) {
+  const [raw, setRaw] = useState(String(value));
+  const focused = useState(false);
+  // Sync from parent when not focused
+  if (!focused[0] && raw !== String(value)) setRaw(String(value));
   return (
     <div>
       <label className="text-sm font-medium text-[var(--botmd-navy)] block mb-1">{label}</label>
-      <input type="number" min={0} value={value}
-        onChange={(e) => onChange(Math.max(0, Number(e.target.value)))}
+      <input type="number" min={0} value={focused[0] ? raw : value}
+        onFocus={() => focused[1](true)}
+        onChange={(e) => { setRaw(e.target.value); if (e.target.value !== "") onChange(Math.max(0, Number(e.target.value))); }}
+        onBlur={() => { focused[1](false); if (raw === "") { setRaw("0"); onChange(0); } }}
         className="w-full border border-gray-200 rounded-xl px-4 py-3 bg-white text-lg font-semibold text-[var(--botmd-navy)] focus:ring-2 focus:ring-[var(--botmd-blue)] focus:border-transparent outline-none transition"
       />
     </div>
+  );
+}
+
+function SmallNumberInput({ value, onChange }: { value: number; onChange: (v: number) => void }) {
+  const [raw, setRaw] = useState(String(value));
+  const focused = useState(false);
+  if (!focused[0] && raw !== String(value)) setRaw(String(value));
+  return (
+    <input type="number" min={0} value={focused[0] ? raw : value}
+      onFocus={() => focused[1](true)}
+      onChange={(e) => { setRaw(e.target.value); if (e.target.value !== "") onChange(Math.max(0, Number(e.target.value))); }}
+      onBlur={() => { focused[1](false); if (raw === "") { setRaw("0"); onChange(0); } }}
+      className="w-20 border border-gray-200 rounded-lg px-3 py-2 text-center font-semibold text-[var(--botmd-navy)] bg-white focus:ring-2 focus:ring-[var(--botmd-blue)] focus:border-transparent outline-none transition"
+    />
   );
 }
 
@@ -696,10 +716,7 @@ function AgentPerPatientRow({ agent, description, creditsPerResponse, responsesP
       <p className="text-xs text-gray-400 mb-3">{description}</p>
       <div className="flex items-center gap-3">
         <div className="flex items-center gap-2 flex-1">
-          <input type="number" min={0} value={responsesPerPatient}
-            onChange={(e) => onChangeResponses(Math.max(0, Number(e.target.value)))}
-            className="w-20 border border-gray-200 rounded-lg px-3 py-2 text-center font-semibold text-[var(--botmd-navy)] bg-white focus:ring-2 focus:ring-[var(--botmd-blue)] focus:border-transparent outline-none transition"
-          />
+          <SmallNumberInput value={responsesPerPatient} onChange={onChangeResponses} />
           <span className="text-sm text-gray-400">responses / patient</span>
         </div>
         <div className="text-right text-xs text-gray-400 flex-shrink-0">
