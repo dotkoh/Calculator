@@ -6,6 +6,12 @@ import { whatsappRates, seAsiaMarketMap, getRateForMarket } from "@/data/whatsap
 const BOTMD_MSG_FEE = 0.005;
 const CREDIT_PRICE = 0.045;
 
+const PLANS = [
+  { id: "starter", label: "Starter", credits: 1_000 },
+  { id: "pro", label: "Pro", credits: 3_000 },
+  { id: "enterprise", label: "Enterprise", credits: 10_000 },
+] as const;
+
 function buildMarketOptions() {
   const seAsiaOptions = Object.entries(seAsiaMarketMap).map(([country, market]) => ({
     label: country, value: country, whatsappMarket: market,
@@ -29,6 +35,7 @@ function BotMDLogo({ height = 48 }: { height?: number }) {
 
 export default function PricingCalculator() {
   // ── Inputs ──
+  const [selectedPlan, setSelectedPlan] = useState("starter");
   const [selectedMarket, setSelectedMarket] = useState("Singapore");
   const [patientEnquiries, setPatientEnquiries] = useState(3000);
   const [coordResponsesPerPatient, setCoordResponsesPerPatient] = useState(2);
@@ -46,11 +53,14 @@ export default function PricingCalculator() {
     if (!rate) return null;
 
     // AI Credits
+    const plan = PLANS.find((p) => p.id === selectedPlan) || PLANS[0];
+    const includedCredits = plan.credits;
     const coordCredits = patientEnquiries * coordResponsesPerPatient * 1;
     const faqCredits = patientEnquiries * faqResponsesPerPatient * 1;
     const schedCredits = schedulingRequests * 3;
     const totalCredits = coordCredits + faqCredits + schedCredits;
-    const aiCreditsCost = totalCredits * CREDIT_PRICE;
+    const overageCredits = Math.max(0, totalCredits - includedCredits);
+    const aiCreditsCost = overageCredits * CREDIT_PRICE;
 
     // Messages breakdown
     const serviceMessages = patientEnquiries * (coordResponsesPerPatient + faqResponsesPerPatient);
@@ -70,6 +80,7 @@ export default function PricingCalculator() {
     const grandTotal = whatsappTotal + botmdMessaging + aiCreditsCost;
 
     return {
+      planLabel: plan.label, includedCredits, overageCredits,
       coordCredits, faqCredits, schedCredits, totalCredits, aiCreditsCost,
       serviceMessages, schedServiceMessages, totalServiceMessages,
       utilityTemplates, totalMarketingTemplates,
@@ -77,7 +88,7 @@ export default function PricingCalculator() {
       waMarketingCost, whatsappTotal,
       botmdMessaging, grandTotal,
     };
-  }, [rate, patientEnquiries, coordResponsesPerPatient, faqResponsesPerPatient, schedulingRequests, appointmentsPerMonth, surveyBlasts, marketingBlasts]);
+  }, [rate, selectedPlan, patientEnquiries, coordResponsesPerPatient, faqResponsesPerPatient, schedulingRequests, appointmentsPerMonth, surveyBlasts, marketingBlasts]);
 
   // ── PDF Download ──
   const handleDownloadPDF = useCallback(async () => {
@@ -86,6 +97,9 @@ export default function PricingCalculator() {
     generatePricingPDF({
       market: selectedMarket,
       whatsappMarket,
+      planName: costs.planLabel,
+      includedCredits: costs.includedCredits,
+      overageCredits: costs.overageCredits,
       patientEnquiries,
       coordResponsesPerPatient,
       faqResponsesPerPatient,
@@ -95,7 +109,7 @@ export default function PricingCalculator() {
       marketingBlasts,
       costs,
     });
-  }, [costs, selectedMarket, whatsappMarket, patientEnquiries, coordResponsesPerPatient, faqResponsesPerPatient, schedulingRequests, appointmentsPerMonth, surveyBlasts, marketingBlasts]);
+  }, [costs, selectedPlan, selectedMarket, whatsappMarket, patientEnquiries, coordResponsesPerPatient, faqResponsesPerPatient, schedulingRequests, appointmentsPerMonth, surveyBlasts, marketingBlasts]);
 
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 py-10">
@@ -137,6 +151,40 @@ export default function PricingCalculator() {
                 <Pill color="gray">Service: Free</Pill>
               </div>
             )}
+          </Card>
+
+          {/* Subscription Plan */}
+          <Card>
+            <SectionHeader icon="⭐" title="Subscription Plan" />
+            <p className="text-sm text-gray-400 mb-3">Each plan includes a monthly AI credit allowance. Overage credits are charged at $0.045 each.</p>
+            <div className="grid grid-cols-3 gap-3">
+              {PLANS.map((plan) => {
+                const active = selectedPlan === plan.id;
+                return (
+                  <button
+                    key={plan.id}
+                    onClick={() => setSelectedPlan(plan.id)}
+                    className={`relative rounded-xl border-2 px-4 py-4 text-left transition-all cursor-pointer ${
+                      active
+                        ? "border-[var(--botmd-blue)] bg-blue-50/60 shadow-sm"
+                        : "border-gray-200 bg-white hover:border-gray-300"
+                    }`}
+                  >
+                    {active && (
+                      <span className="absolute top-2 right-2 w-5 h-5 rounded-full bg-[var(--botmd-blue)] flex items-center justify-center">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
+                      </span>
+                    )}
+                    <span className={`block text-sm font-semibold ${active ? "text-[var(--botmd-blue)]" : "text-[var(--botmd-navy)]"}`}>
+                      {plan.label}
+                    </span>
+                    <span className="block text-xs text-gray-400 mt-1">
+                      {num(plan.credits)} credits/mo
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
           </Card>
 
           {/* 1. Patient Enquiry Volume */}
@@ -242,7 +290,7 @@ export default function PricingCalculator() {
                 <p className="text-4xl font-extrabold mt-2 tracking-tight">
                   {costs ? fmt(costs.grandTotal) : "—"}
                 </p>
-                <p className="text-xs text-blue-200 mt-2">{num(patientEnquiries)} patients / month</p>
+                <p className="text-xs text-blue-200 mt-2">{costs?.planLabel ?? ""} plan · {num(patientEnquiries)} patients / month</p>
               </div>
             </div>
 
@@ -282,8 +330,13 @@ export default function PricingCalculator() {
                   <CostRow label="Coordinating" detail={`${num(costs.coordCredits)} cr`} amount={costs.coordCredits * CREDIT_PRICE} />
                   <CostRow label="FAQ" detail={`${num(costs.faqCredits)} cr`} amount={costs.faqCredits * CREDIT_PRICE} />
                   <CostRow label="Scheduling" detail={`${num(costs.schedCredits)} cr`} amount={costs.schedCredits * CREDIT_PRICE} />
+                  <div className="text-xs text-gray-400 pt-1">Total used: {num(costs.totalCredits)} credits</div>
+                  <div className="flex items-center justify-between text-[var(--botmd-cyan)] font-medium">
+                    <span>{costs.planLabel} plan allowance</span>
+                    <span>−{num(costs.includedCredits)} cr</span>
+                  </div>
                   <Divider />
-                  <CostRow label={`${num(costs.totalCredits)} credits × $0.045`} amount={costs.aiCreditsCost} bold />
+                  <CostRow label={`Overage: ${num(costs.overageCredits)} cr × $0.045`} amount={costs.aiCreditsCost} bold />
                 </div>
               </SummaryCard>
             )}

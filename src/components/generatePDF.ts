@@ -9,6 +9,9 @@ const LIGHT_GRAY = "#F3F4F6";
 interface PDFData {
   market: string;
   whatsappMarket: string;
+  planName: string;
+  includedCredits: number;
+  overageCredits: number;
   patientEnquiries: number;
   coordResponsesPerPatient: number;
   faqResponsesPerPatient: number;
@@ -21,6 +24,8 @@ interface PDFData {
     faqCredits: number;
     schedCredits: number;
     totalCredits: number;
+    includedCredits: number;
+    overageCredits: number;
     aiCreditsCost: number;
     totalServiceMessages: number;
     utilityTemplates: number;
@@ -61,7 +66,7 @@ export function generatePricingPDF(data: PDFData) {
   doc.setTextColor("#BBDEFB");
   const today = new Date().toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" });
   doc.text(today, pw - margin, 22, { align: "right" });
-  doc.text(`Market: ${data.market} (${data.whatsappMarket})`, pw - margin, 30, { align: "right" });
+  doc.text(`${data.planName} Plan · ${data.market} (${data.whatsappMarket})`, pw - margin, 30, { align: "right" });
 
   y = 58;
 
@@ -98,6 +103,7 @@ export function generatePricingPDF(data: PDFData) {
   y = sectionTitle(doc, "Your Inputs", y, margin);
 
   const assumptions = [
+    ["Subscription plan", `${data.planName} (${num(data.includedCredits)} credits/mo)`],
     ["Monthly patient enquiries", num(data.patientEnquiries)],
     ["Coordinating Agent responses / patient", `${data.coordResponsesPerPatient} responses`],
     ["FAQ Agent responses / patient", `${data.faqResponsesPerPatient} responses`],
@@ -144,10 +150,12 @@ export function generatePricingPDF(data: PDFData) {
     ["  Messages delivered", `${num(data.costs.totalMessages)} × $0.005`, fmt(data.costs.botmdMessaging)],
     ["", "", ""],
     ["Bot MD AI Credits", "", ""],
-    ["  Coordinating Agent", `${num(data.costs.coordCredits)} credits × $0.045`, fmt(data.costs.coordCredits * 0.045)],
-    ["  FAQ Agent", `${num(data.costs.faqCredits)} credits × $0.045`, fmt(data.costs.faqCredits * 0.045)],
-    ["  Scheduling Agent", `${num(data.costs.schedCredits)} credits × $0.045`, fmt(data.costs.schedCredits * 0.045)],
-    ["  Subtotal", `${num(data.costs.totalCredits)} credits`, fmt(data.costs.aiCreditsCost)],
+    ["  Coordinating Agent", `${num(data.costs.coordCredits)} credits`, ""],
+    ["  FAQ Agent", `${num(data.costs.faqCredits)} credits`, ""],
+    ["  Scheduling Agent", `${num(data.costs.schedCredits)} credits`, ""],
+    ["  Total credits used", `${num(data.costs.totalCredits)} credits`, ""],
+    ["  Plan allowance (" + data.planName + ")", `−${num(data.includedCredits)} credits`, ""],
+    ["  Overage", `${num(data.overageCredits)} credits × $0.045`, fmt(data.costs.aiCreditsCost)],
   ];
 
   y = drawTable(doc, breakdown, y, margin, contentW, true);
