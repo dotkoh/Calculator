@@ -5,6 +5,8 @@ import { whatsappRates, seAsiaMarketMap, getRateForMarket } from "@/data/whatsap
 
 const BOTMD_MSG_FEE = 0.005;
 const CREDIT_PRICE = 0.045;
+const SCHED_CREDITS_PER_RESPONSE = 3;
+const SCHED_RESPONSES_PER_REQUEST = 3;
 
 const PLANS = [
   { id: "starter", label: "Starter", credits: 1_000 },
@@ -57,14 +59,14 @@ export default function PricingCalculator() {
     const includedCredits = plan.credits;
     const coordCredits = patientEnquiries * coordResponsesPerPatient * 1;
     const faqCredits = patientEnquiries * faqResponsesPerPatient * 1;
-    const schedCredits = schedulingRequests * 3;
+    const schedCredits = schedulingRequests * SCHED_RESPONSES_PER_REQUEST * SCHED_CREDITS_PER_RESPONSE;
     const totalCredits = coordCredits + faqCredits + schedCredits;
     const overageCredits = Math.max(0, totalCredits - includedCredits);
     const aiCreditsCost = overageCredits * CREDIT_PRICE;
 
     // Messages breakdown
     const serviceMessages = patientEnquiries * (coordResponsesPerPatient + faqResponsesPerPatient);
-    const schedServiceMessages = schedulingRequests * 3;
+    const schedServiceMessages = schedulingRequests * SCHED_RESPONSES_PER_REQUEST;
     const utilityTemplates = appointmentsPerMonth * 2;
     const totalServiceMessages = serviceMessages + schedServiceMessages;
     const totalMarketingTemplates = surveyBlasts + marketingBlasts;
@@ -218,8 +220,22 @@ export default function PricingCalculator() {
                 <BigNumberInput label="Scheduling requests / month" value={schedulingRequests} onChange={setSchedulingRequests} />
               </div>
               <div className="pt-7 text-xs text-gray-400 flex-shrink-0 text-right">
-                <span className="block font-medium text-[var(--botmd-navy)]">{num(schedulingRequests * 3)} credits</span>
-                <span>3 credits per request</span>
+                <span className="block font-medium text-[var(--botmd-navy)]">{num(schedulingRequests * SCHED_RESPONSES_PER_REQUEST * SCHED_CREDITS_PER_RESPONSE)} credits</span>
+                <span>{SCHED_RESPONSES_PER_REQUEST} responses × {SCHED_CREDITS_PER_RESPONSE} cr each</span>
+              </div>
+            </div>
+            <div className="mt-3 grid grid-cols-3 gap-2 text-xs text-gray-400">
+              <div className="bg-gray-50 rounded-lg p-2 text-center">
+                <span className="block font-medium text-[var(--botmd-navy)]">1. Data collection</span>
+                <span>3 credits</span>
+              </div>
+              <div className="bg-gray-50 rounded-lg p-2 text-center">
+                <span className="block font-medium text-[var(--botmd-navy)]">2. Dates &amp; times</span>
+                <span>3 credits</span>
+              </div>
+              <div className="bg-gray-50 rounded-lg p-2 text-center">
+                <span className="block font-medium text-[var(--botmd-navy)]">3. Confirmation</span>
+                <span>3 credits</span>
               </div>
             </div>
           </Card>

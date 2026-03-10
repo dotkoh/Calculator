@@ -138,7 +138,7 @@ export async function generatePricingPDF(data: PDFData) {
     ["Monthly patient enquiries", num(data.patientEnquiries)],
     ["Coordinating Agent responses / patient", `${data.coordResponsesPerPatient} responses`],
     ["FAQ Agent responses / patient", `${data.faqResponsesPerPatient} responses`],
-    ["Scheduling requests / month", num(data.schedulingRequests)],
+    ["Scheduling requests / month", `${num(data.schedulingRequests)} (3 responses × 3 cr each)`],
     ["Appointments / month", num(data.appointmentsPerMonth)],
     ...(data.surveyBlasts > 0 ? [["Patient surveys & reminders / month", num(data.surveyBlasts)]] : []),
     ...(data.marketingBlasts > 0 ? [["Marketing blasts / month", num(data.marketingBlasts)]] : []),
