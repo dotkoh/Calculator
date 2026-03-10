@@ -6,12 +6,7 @@ const CYAN = "#00D6C6";
 const GRAY = "#6B7280";
 const LIGHT_GRAY = "#F3F4F6";
 
-interface PDFData {
-  market: string;
-  whatsappMarket: string;
-  planName: string;
-  includedCredits: number;
-  overageCredits: number;
+interface ChannelInputs {
   patientEnquiries: number;
   coordResponsesPerPatient: number;
   faqResponsesPerPatient: number;
@@ -19,25 +14,50 @@ interface PDFData {
   appointmentsPerMonth: number;
   surveyBlasts: number;
   marketingBlasts: number;
+}
+
+interface ChannelCosts {
+  coordCredits: number;
+  faqCredits: number;
+  schedCredits: number;
+  totalCredits: number;
+  totalServiceMessages: number;
+  utilityOrTransactionalMessages: number;
+  totalMarketingMessages: number;
+  totalMessages: number;
+  channelFees: number;
+  channelFeeDetails: { label: string; amount: number; count: number }[];
+  botmdMessaging: number;
+}
+
+interface PDFData {
+  market: string;
+  whatsappMarket: string;
+  planName: string;
+  includedCredits: number;
+  overageCredits: number;
+  enabledChannels: string[];
+  channelInputs: Record<string, ChannelInputs>;
   costs: {
-    coordCredits: number;
-    faqCredits: number;
-    schedCredits: number;
-    totalCredits: number;
+    perChannel: Record<string, ChannelCosts>;
+    planLabel: string;
     includedCredits: number;
+    totalCredits: number;
     overageCredits: number;
     aiCreditsCost: number;
-    totalServiceMessages: number;
-    utilityTemplates: number;
-    totalMarketingTemplates: number;
+    totalBotmdMessaging: number;
+    totalChannelFees: number;
     totalMessages: number;
-    waUtilityCost: number;
-    waMarketingCost: number;
-    whatsappTotal: number;
-    botmdMessaging: number;
+    totalPatients: number;
     grandTotal: number;
   };
 }
+
+const CHANNEL_LABELS: Record<string, string> = {
+  whatsapp: "WhatsApp",
+  messenger: "Messenger",
+  viber: "Viber",
+};
 
 function fmt(v: number) {
   return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(v);
@@ -62,19 +82,24 @@ async function loadLogoAsDataURL(): Promise<string | null> {
 export async function generatePricingPDF(data: PDFData) {
   const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
   const pw = doc.internal.pageSize.getWidth();
+  const ph = doc.internal.pageSize.getHeight();
   const margin = 20;
   const contentW = pw - margin * 2;
   let y = 20;
 
-  // Load logo
   const logoDataURL = await loadLogoAsDataURL();
-
-  // ── Header ──
   const today = new Date().toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" });
 
-  // Logo + title on white background
+  // ── Helper: check page break ──
+  function checkPageBreak(needed: number) {
+    if (y + needed > ph - 25) {
+      doc.addPage();
+      y = 20;
+    }
+  }
+
+  // ── Header ──
   if (logoDataURL) {
-    // Logo is 1000×367 (2.72:1 ratio); fit to 38mm wide × 14mm tall
     doc.addImage(logoDataURL, "PNG", margin, 12, 38, 14);
   } else {
     doc.setTextColor(BLUE);
@@ -92,9 +117,10 @@ export async function generatePricingPDF(data: PDFData) {
   doc.setTextColor(GRAY);
   doc.setFont("helvetica", "normal");
   doc.text(today, pw - margin, 18, { align: "right" });
-  doc.text(`${data.planName} Plan · ${data.market} (${data.whatsappMarket})`, pw - margin, 25, { align: "right" });
 
-  // Blue accent line under header
+  const channelList = data.enabledChannels.map((c) => CHANNEL_LABELS[c] || c).join(" + ");
+  doc.text(`${data.planName} Plan · ${channelList}`, pw - margin, 25, { align: "right" });
+
   doc.setDrawColor(BLUE);
   doc.setLineWidth(1.2);
   doc.line(margin, 40, margin + contentW, 40);
@@ -121,75 +147,106 @@ export async function generatePricingPDF(data: PDFData) {
   doc.setFontSize(10);
   doc.setTextColor(GRAY);
   doc.setFont("helvetica", "normal");
-  doc.text(`${num(data.patientEnquiries)} patients/month`, pw - margin - 8, y + 18, { align: "right" });
+  doc.text(`${num(data.costs.totalPatients)} patients/month · ${channelList}`, pw - margin - 8, y + 18, { align: "right" });
 
-  if (data.patientEnquiries > 0) {
+  if (data.costs.totalPatients > 0) {
     doc.setFontSize(9);
-    doc.text(`${fmt(data.costs.grandTotal / data.patientEnquiries)} per patient`, pw - margin - 8, y + 24, { align: "right" });
+    doc.text(`${fmt(data.costs.grandTotal / data.costs.totalPatients)} per patient`, pw - margin - 8, y + 24, { align: "right" });
   }
 
   y += 38;
 
-  // ── Assumptions ──
-  y = sectionTitle(doc, "Your Inputs", y, margin);
+  // ── Per-Channel Inputs ──
+  for (const chId of data.enabledChannels) {
+    const inp = data.channelInputs[chId];
+    if (!inp) continue;
+    const label = CHANNEL_LABELS[chId] || chId;
 
-  const assumptions = [
-    ["Subscription plan", `${data.planName} (${num(data.includedCredits)} credits/mo)`],
-    ["Monthly patient enquiries", num(data.patientEnquiries)],
-    ["Coordinating Agent responses / patient", `${data.coordResponsesPerPatient} responses`],
-    ["FAQ Agent responses / patient", `${data.faqResponsesPerPatient} responses`],
-    ["Scheduling requests / month", `${num(data.schedulingRequests)} (3 responses × 3 cr each)`],
-    ["Appointments / month", num(data.appointmentsPerMonth)],
-    ...(data.surveyBlasts > 0 ? [["Patient surveys & reminders / month", num(data.surveyBlasts)]] : []),
-    ...(data.marketingBlasts > 0 ? [["Marketing blasts / month", num(data.marketingBlasts)]] : []),
-  ];
+    checkPageBreak(50);
+    y = sectionTitle(doc, `${label} — Inputs`, y, margin);
 
-  y = drawTable(doc, assumptions, y, margin, contentW);
+    const rows = [
+      ["Monthly patient enquiries", num(inp.patientEnquiries)],
+      ["Coordinating Agent responses / patient", `${inp.coordResponsesPerPatient} responses`],
+      ["FAQ Agent responses / patient", `${inp.faqResponsesPerPatient} responses`],
+      ["Scheduling requests / month", `${num(inp.schedulingRequests)} (3 resp × 3 cr each)`],
+      ["Appointments / month", num(inp.appointmentsPerMonth)],
+      ...(inp.surveyBlasts > 0 ? [["Patient surveys & reminders", num(inp.surveyBlasts)]] : []),
+      ...(inp.marketingBlasts > 0 ? [["Marketing blasts", num(inp.marketingBlasts)]] : []),
+    ];
+
+    y = drawTable(doc, rows, y, margin, contentW);
+    y += 6;
+  }
+
+  // ── Per-Channel Costs ──
+  for (const chId of data.enabledChannels) {
+    const chCosts = data.costs.perChannel[chId];
+    if (!chCosts) continue;
+    const label = CHANNEL_LABELS[chId] || chId;
+
+    checkPageBreak(60);
+    y = sectionTitle(doc, `${label} — Costs`, y, margin);
+
+    const rows: string[][] = [];
+
+    // Channel fees
+    rows.push([`${label} Channel Fees`, "", ""]);
+    for (const detail of chCosts.channelFeeDetails) {
+      if (detail.label === "No channel fees") {
+        rows.push(["  No channel fees", `${num(detail.count)} msgs`, "$0.00"]);
+      } else if (detail.label === "Service messages") {
+        rows.push(["  Service messages", `${num(detail.count)} msgs`, "Free"]);
+      } else {
+        rows.push([`  ${detail.label}`, `${num(detail.count)} msgs`, fmt(detail.amount)]);
+      }
+    }
+    rows.push(["  Subtotal", "", fmt(chCosts.channelFees)]);
+
+    // Bot MD Messaging for this channel
+    rows.push(["", "", ""]);
+    rows.push(["Bot MD Messaging", "", ""]);
+    rows.push(["  Messages delivered", `${num(chCosts.totalMessages)} × $0.005`, fmt(chCosts.botmdMessaging)]);
+
+    // AI Credits for this channel
+    rows.push(["", "", ""]);
+    rows.push(["AI Credits Used", "", ""]);
+    rows.push(["  Coordinating Agent", `${num(chCosts.coordCredits)} credits`, ""]);
+    rows.push(["  FAQ Agent", `${num(chCosts.faqCredits)} credits`, ""]);
+    rows.push(["  Scheduling Agent", `${num(chCosts.schedCredits)} credits`, ""]);
+    rows.push(["  Channel subtotal", `${num(chCosts.totalCredits)} credits`, ""]);
+
+    y = drawTable(doc, rows, y, margin, contentW, true);
+    y += 6;
+  }
+
+  // ── Pooled AI Credits Summary ──
+  checkPageBreak(50);
+  y = sectionTitle(doc, "Pooled AI Credits", y, margin);
+
+  const creditRows: string[][] = [];
+  for (const chId of data.enabledChannels) {
+    const chCosts = data.costs.perChannel[chId];
+    if (!chCosts) continue;
+    creditRows.push([`  ${CHANNEL_LABELS[chId] || chId}`, `${num(chCosts.totalCredits)} credits`, ""]);
+  }
+  creditRows.push(["  Total credits used", `${num(data.costs.totalCredits)} credits`, ""]);
+  creditRows.push([`  Plan allowance (${data.planName})`, `−${num(data.includedCredits)} credits`, ""]);
+  creditRows.push(["  Overage", `${num(data.overageCredits)} × $0.045`, fmt(data.costs.aiCreditsCost)]);
+
+  y = drawTable(doc, creditRows, y, margin, contentW, true);
   y += 6;
 
-  // ── Messages Summary ──
-  y = sectionTitle(doc, "Messages Summary", y, margin);
+  // ── Grand Total Summary ──
+  checkPageBreak(40);
+  y = sectionTitle(doc, "Cost Summary", y, margin);
 
-  // Per-message marketing rate (derived from total)
-  const mktRate = data.costs.totalMarketingTemplates > 0
-    ? data.costs.waMarketingCost / data.costs.totalMarketingTemplates
-    : 0;
+  const summaryRows: string[][] = [];
+  summaryRows.push(["Channel fees total", "", fmt(data.costs.totalChannelFees)]);
+  summaryRows.push(["Bot MD Messaging total", `${num(data.costs.totalMessages)} msgs`, fmt(data.costs.totalBotmdMessaging)]);
+  summaryRows.push(["AI Credits overage", `${num(data.overageCredits)} credits`, fmt(data.costs.aiCreditsCost)]);
 
-  const messages = [
-    ["AI replies (service messages)", `${num(data.costs.totalServiceMessages)} msgs`, "Free from WhatsApp"],
-    ["Confirmations + reminders (utility)", `${num(data.costs.utilityTemplates)} msgs`, fmt(data.costs.waUtilityCost)],
-    ...(data.surveyBlasts > 0 ? [["Patient surveys & reminders (marketing)", `${num(data.surveyBlasts)} msgs`, fmt(mktRate * data.surveyBlasts)]] : []),
-    ...(data.marketingBlasts > 0 ? [["Marketing blasts (marketing)", `${num(data.marketingBlasts)} msgs`, fmt(mktRate * data.marketingBlasts)]] : []),
-    ["Total messages", `${num(data.costs.totalMessages)} msgs`, ""],
-  ];
-
-  y = drawTable(doc, messages, y, margin, contentW, true);
-  y += 6;
-
-  // ── Cost Breakdown ──
-  y = sectionTitle(doc, "Cost Breakdown", y, margin);
-
-  const breakdown = [
-    ["WhatsApp Channel Fees", "", ""],
-    ["  Service messages", "Free from WhatsApp", "$0.00"],
-    ["  Utility templates", `${num(data.costs.utilityTemplates)} msgs`, fmt(data.costs.waUtilityCost)],
-    ...(data.surveyBlasts > 0 ? [["  Surveys & reminders", `${num(data.surveyBlasts)} msgs`, fmt(mktRate * data.surveyBlasts)]] : []),
-    ...(data.marketingBlasts > 0 ? [["  Marketing blasts", `${num(data.marketingBlasts)} msgs`, fmt(mktRate * data.marketingBlasts)]] : []),
-    ["  Subtotal", "", fmt(data.costs.whatsappTotal)],
-    ["", "", ""],
-    ["Bot MD Messaging", "", ""],
-    ["  Messages delivered", `${num(data.costs.totalMessages)} × $0.005`, fmt(data.costs.botmdMessaging)],
-    ["", "", ""],
-    ["Bot MD AI Credits", "", ""],
-    ["  Coordinating Agent", `${num(data.costs.coordCredits)} credits`, ""],
-    ["  FAQ Agent", `${num(data.costs.faqCredits)} credits`, ""],
-    ["  Scheduling Agent", `${num(data.costs.schedCredits)} credits`, ""],
-    ["  Total credits used", `${num(data.costs.totalCredits)} credits`, ""],
-    ["  Plan allowance (" + data.planName + ")", `−${num(data.includedCredits)} credits`, ""],
-    ["  Overage", `${num(data.overageCredits)} credits × $0.045`, fmt(data.costs.aiCreditsCost)],
-  ];
-
-  y = drawTable(doc, breakdown, y, margin, contentW, true);
+  y = drawTable(doc, summaryRows, y, margin, contentW, true);
   y += 4;
 
   // ── Total line ──
@@ -206,12 +263,14 @@ export async function generatePricingPDF(data: PDFData) {
   y += 12;
 
   // ── Footer / Disclaimers ──
+  checkPageBreak(25);
   doc.setFontSize(7.5);
   doc.setTextColor("#9CA3AF");
   doc.setFont("helvetica", "normal");
   const disclaimers = [
     "WhatsApp rates effective January 1, 2026. Rates subject to change by Meta.",
     "Service messages within the 24hr customer service window are free from WhatsApp.",
+    "Viber rates based on Philippines (PHP). USD conversion at PHP 56 = $1.",
     "Volume tier discounts not included. Actual costs may vary.",
     `Generated on ${today} by Bot MD Pricing Calculator.`,
   ];
@@ -242,17 +301,14 @@ function drawTable(doc: jsPDF, rows: string[][], y: number, margin: number, cont
   doc.setFontSize(9);
 
   rows.forEach((row, i) => {
-    // Empty row = spacer
     if (row.every((c) => c === "")) {
       y += 2;
       return;
     }
 
-    // Section headers (no indent)
-    const isHeader = !row[0].startsWith("  ") && row[1] === "" && row[2] === "";
-    const isSubtotal = row[0].includes("Subtotal") || row[0] === "Total messages";
+    const isHeader = !row[0].startsWith("  ") && row.length >= 3 && row[1] === "" && row[2] === "";
+    const isSubtotal = row[0].includes("Subtotal") || row[0].includes("Total");
 
-    // Alternate row bg
     if (i % 2 === 0 && !isHeader) {
       doc.setFillColor(LIGHT_GRAY);
       doc.rect(margin, y - 3.5, contentW, 5.5, "F");
@@ -278,7 +334,7 @@ function drawTable(doc: jsPDF, rows: string[][], y: number, margin: number, cont
       doc.setTextColor(GRAY);
       doc.text(row[1], margin + contentW * 0.55, y);
 
-      if (row[2] === "Free from WhatsApp") {
+      if (row[2] === "Free" || row[2] === "$0.00") {
         doc.setTextColor(CYAN);
         doc.setFont("helvetica", "bold");
       } else {
