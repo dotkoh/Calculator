@@ -1,20 +1,11 @@
 import { jsPDF } from "jspdf";
+import type { ChannelInputs } from "@/data/calculatorConfigs";
 
 const BLUE = "#256BF6";
 const NAVY = "#1E2A3A";
 const CYAN = "#00D6C6";
 const GRAY = "#6B7280";
 const LIGHT_GRAY = "#F3F4F6";
-
-interface ChannelInputs {
-  patientEnquiries: number;
-  coordResponsesPerPatient: number;
-  faqResponsesPerPatient: number;
-  schedulingRequests: number;
-  appointmentsPerMonth: number;
-  surveyBlasts: number;
-  marketingBlasts: number;
-}
 
 interface ChannelCosts {
   coordCredits: number;
@@ -31,6 +22,7 @@ interface ChannelCosts {
 }
 
 interface PDFData {
+  calculatorType: "hospital" | "clinic";
   market: string;
   whatsappMarket: string;
   planName: string;
@@ -111,7 +103,8 @@ export async function generatePricingPDF(data: PDFData) {
   doc.setFontSize(14);
   doc.setTextColor(NAVY);
   doc.setFont("helvetica", "bold");
-  doc.text("Pricing Estimate", margin, 34);
+  const typeLabel = data.calculatorType === "clinic" ? "Clinic" : "Hospital";
+  doc.text(`${typeLabel} Pricing Estimate`, margin, 34);
 
   doc.setFontSize(9);
   doc.setTextColor(GRAY);
@@ -272,7 +265,7 @@ export async function generatePricingPDF(data: PDFData) {
     "Service messages within the 24hr customer service window are free from WhatsApp.",
     "Viber rates based on Philippines (PHP). USD conversion at PHP 56 = $1.",
     "Volume tier discounts not included. Actual costs may vary.",
-    `Generated on ${today} by Bot MD Pricing Calculator.`,
+    `Generated on ${today} by Bot MD ${data.calculatorType === "clinic" ? "Clinic" : "Hospital"} Pricing Calculator.`,
   ];
   disclaimers.forEach((d) => {
     doc.text(d, margin, y);
@@ -280,7 +273,8 @@ export async function generatePricingPDF(data: PDFData) {
   });
 
   // ── Save ──
-  doc.save(`BotMD_Pricing_Estimate_${data.market.replace(/\s+/g, "_")}_${new Date().toISOString().slice(0, 10)}.pdf`);
+  const fileTypeLabel = data.calculatorType === "clinic" ? "Clinic" : "Hospital";
+  doc.save(`BotMD_${fileTypeLabel}_Pricing_Estimate_${data.market.replace(/\s+/g, "_")}_${new Date().toISOString().slice(0, 10)}.pdf`);
 }
 
 // ── Helpers ──

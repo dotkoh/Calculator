@@ -1,12 +1,12 @@
 "use client";
 
 import PricingCalculator from "@/components/PricingCalculator";
-import { HOSPITAL_CONFIG } from "@/data/calculatorConfigs";
+import { CLINIC_CONFIG } from "@/data/calculatorConfigs";
 
-export default function Home() {
+export default function ClinicsPage() {
   return (
     <main className="min-h-screen py-4">
-      <PricingCalculator config={HOSPITAL_CONFIG} />
+      <PricingCalculator config={CLINIC_CONFIG} />
     </main>
   );
 }

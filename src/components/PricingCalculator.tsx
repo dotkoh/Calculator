@@ -3,19 +3,12 @@
 import { useState, useMemo, useCallback, type ReactNode } from "react";
 import { whatsappRates, seAsiaMarketMap, getRateForMarket } from "@/data/whatsappRates";
 import { VIBER_RATES_PHP, PHP_TO_USD, VIBER_RATES_USD } from "@/data/viberRates";
+import type { CalculatorConfig, ChannelId, ChannelInputs } from "@/data/calculatorConfigs";
 
 const BOTMD_MSG_FEE = 0.005;
 const CREDIT_PRICE = 0.045;
 const SCHED_CREDITS_PER_RESPONSE = 3;
 const SCHED_RESPONSES_PER_REQUEST = 3;
-
-const PLANS = [
-  { id: "starter", label: "Starter", credits: 1_000, maxChannels: 2 },
-  { id: "pro", label: "Pro", credits: 3_000, maxChannels: 5 },
-  { id: "enterprise", label: "Enterprise", credits: 10_000, maxChannels: Infinity },
-] as const;
-
-type ChannelId = "whatsapp" | "messenger" | "viber";
 
 // ── Brand Logo SVGs ──
 function WhatsAppIcon({ size = 24 }: { size?: number }) {
@@ -62,16 +55,6 @@ const CHANNELS: { id: ChannelId; label: string; color: string }[] = [
   { id: "viber", label: "Viber", color: "border-purple-400 bg-purple-50/60" },
 ];
 
-interface ChannelInputs {
-  patientEnquiries: number;
-  coordResponsesPerPatient: number;
-  faqResponsesPerPatient: number;
-  schedulingRequests: number;
-  appointmentsPerMonth: number;
-  surveyBlasts: number;
-  marketingBlasts: number;
-}
-
 interface ChannelCosts {
   coordCredits: number;
   faqCredits: number;
@@ -85,12 +68,6 @@ interface ChannelCosts {
   channelFeeDetails: { label: string; amount: number; count: number }[];
   botmdMessaging: number;
 }
-
-const DEFAULT_INPUTS: Record<ChannelId, ChannelInputs> = {
-  whatsapp: { patientEnquiries: 3000, coordResponsesPerPatient: 2, faqResponsesPerPatient: 2, schedulingRequests: 500, appointmentsPerMonth: 800, surveyBlasts: 500, marketingBlasts: 0 },
-  messenger: { patientEnquiries: 1000, coordResponsesPerPatient: 2, faqResponsesPerPatient: 2, schedulingRequests: 200, appointmentsPerMonth: 300, surveyBlasts: 0, marketingBlasts: 0 },
-  viber: { patientEnquiries: 500, coordResponsesPerPatient: 2, faqResponsesPerPatient: 2, schedulingRequests: 100, appointmentsPerMonth: 200, surveyBlasts: 200, marketingBlasts: 0 },
-};
 
 function buildMarketOptions() {
   const seAsiaOptions = Object.entries(seAsiaMarketMap).map(([country, market]) => ({
@@ -116,17 +93,17 @@ function BotMDLogo({ height = 48 }: { height?: number }) {
   return <img src="/botmd-logo.png" alt="Bot MD" height={height} style={{ height: `${height}px`, width: "auto" }} className="object-contain" />;
 }
 
-export default function PricingCalculator() {
+export default function PricingCalculator({ config }: { config: CalculatorConfig }) {
   // ── Global Inputs ──
-  const [selectedPlan, setSelectedPlan] = useState("starter");
+  const [selectedPlan, setSelectedPlan] = useState(config.defaultPlanId);
   const [selectedMarket, setSelectedMarket] = useState("Singapore");
   const [enabledChannels, setEnabledChannels] = useState<Set<ChannelId>>(new Set(["whatsapp"]));
   const [activeTab, setActiveTab] = useState<ChannelId>("whatsapp");
-  const [channelInputs, setChannelInputs] = useState<Record<ChannelId, ChannelInputs>>(DEFAULT_INPUTS);
+  const [channelInputs, setChannelInputs] = useState<Record<ChannelId, ChannelInputs>>(config.defaultInputs);
 
   const whatsappMarket = useMemo(() => seAsiaMarketMap[selectedMarket] || selectedMarket, [selectedMarket]);
   const waRate = useMemo(() => getRateForMarket(whatsappMarket), [whatsappMarket]);
-  const plan = useMemo(() => PLANS.find((p) => p.id === selectedPlan) || PLANS[0], [selectedPlan]);
+  const plan = useMemo(() => config.plans.find((p) => p.id === selectedPlan) || config.plans[0], [config.plans, selectedPlan]);
 
   // Helper to update a single channel's inputs
   const updateChannelInput = useCallback((channel: ChannelId, field: keyof ChannelInputs, value: number) => {
@@ -260,6 +237,7 @@ export default function PricingCalculator() {
     if (!costs) return;
     const { generatePricingPDF } = await import("./generatePDF");
     await generatePricingPDF({
+      calculatorType: config.calculatorType,
       market: selectedMarket,
       whatsappMarket,
       planName: costs.planLabel,
@@ -269,7 +247,7 @@ export default function PricingCalculator() {
       channelInputs,
       costs,
     });
-  }, [costs, selectedMarket, whatsappMarket, enabledChannels, channelInputs]);
+  }, [costs, selectedMarket, whatsappMarket, enabledChannels, channelInputs, config.calculatorType]);
 
   const activeInputs = channelInputs[activeTab];
   const activeChannelMeta = CHANNELS.find((c) => c.id === activeTab)!;
@@ -281,9 +259,9 @@ export default function PricingCalculator() {
         <div className="flex items-center justify-center mb-4">
           <BotMDLogo height={56} />
         </div>
-        <h2 className="text-xl sm:text-2xl font-semibold text-[var(--botmd-navy)]">Messaging & AI Credit Cost Calculator</h2>
+        <h2 className="text-xl sm:text-2xl font-semibold text-[var(--botmd-navy)]">{config.title}</h2>
         <p className="text-gray-400 mt-2 max-w-lg mx-auto">
-          Estimate your monthly messaging &amp; AI agent costs across channels
+          {config.subtitle}
         </p>
       </header>
 
@@ -296,7 +274,7 @@ export default function PricingCalculator() {
             <SectionHeader icon="⭐" title="Subscription Plan" />
             <p className="text-sm text-gray-400 mb-3">Each plan includes a monthly AI credit allowance shared across all channels.</p>
             <div className="grid grid-cols-3 gap-3">
-              {PLANS.map((p) => {
+              {config.plans.map((p) => {
                 const active = selectedPlan === p.id;
                 return (
                   <button
@@ -318,7 +296,7 @@ export default function PricingCalculator() {
                       {num(p.credits)} credits/mo
                     </span>
                     <span className="block text-xs text-gray-400">
-                      {p.maxChannels === Infinity ? "Unlimited channels" : `Up to ${p.maxChannels} channels`}
+                      {p.maxChannels >= 10 ? "Unlimited channels" : `Up to ${p.maxChannels} channels`}
                     </span>
                   </button>
                 );
@@ -329,7 +307,7 @@ export default function PricingCalculator() {
           {/* Channel Selector */}
           <Card>
             <SectionHeader icon="📡" title="Channels" />
-            <p className="text-sm text-gray-400 mb-3">Select the messaging channels you use. {plan.maxChannels < Infinity ? `${plan.label} plan supports up to ${plan.maxChannels} channels.` : "Enterprise plan supports unlimited channels."}</p>
+            <p className="text-sm text-gray-400 mb-3">Select the messaging channels you use. {plan.maxChannels < 10 ? `${plan.label} plan supports up to ${plan.maxChannels} channels.` : "Enterprise plan supports unlimited channels."}</p>
             <div className="grid grid-cols-3 gap-3">
               {CHANNELS.map((ch) => {
                 const enabled = enabledChannels.has(ch.id);
