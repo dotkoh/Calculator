@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { whatsappRates, seAsiaMarketMap, getRateForMarket } from "@/data/whatsappRates";
 
 const BOTMD_MSG_FEE = 0.005;
@@ -35,6 +35,7 @@ export default function PricingCalculator() {
   const [faqResponsesPerPatient, setFaqResponsesPerPatient] = useState(2);
   const [schedulingRequests, setSchedulingRequests] = useState(500);
   const [appointmentsPerMonth, setAppointmentsPerMonth] = useState(800);
+  const [surveyBlasts, setSurveyBlasts] = useState(500);
   const [marketingBlasts, setMarketingBlasts] = useState(0);
 
   const whatsappMarket = useMemo(() => seAsiaMarketMap[selectedMarket] || selectedMarket, [selectedMarket]);
@@ -45,23 +46,23 @@ export default function PricingCalculator() {
     if (!rate) return null;
 
     // AI Credits
-    const coordCredits = patientEnquiries * coordResponsesPerPatient * 1; // 1 credit each
-    const faqCredits = patientEnquiries * faqResponsesPerPatient * 1;     // 1 credit each
-    const schedCredits = schedulingRequests * 3;                           // 3 credits each
+    const coordCredits = patientEnquiries * coordResponsesPerPatient * 1;
+    const faqCredits = patientEnquiries * faqResponsesPerPatient * 1;
+    const schedCredits = schedulingRequests * 3;
     const totalCredits = coordCredits + faqCredits + schedCredits;
     const aiCreditsCost = totalCredits * CREDIT_PRICE;
 
     // Messages breakdown
-    const serviceMessages = patientEnquiries * (coordResponsesPerPatient + faqResponsesPerPatient); // free-form AI replies (free from WA)
-    const schedServiceMessages = schedulingRequests * 3; // avg 3 messages per scheduling flow (free from WA)
-    const utilityTemplates = appointmentsPerMonth * 2; // 1 confirmation + 1 reminder per appointment
+    const serviceMessages = patientEnquiries * (coordResponsesPerPatient + faqResponsesPerPatient);
+    const schedServiceMessages = schedulingRequests * 3;
+    const utilityTemplates = appointmentsPerMonth * 2;
     const totalServiceMessages = serviceMessages + schedServiceMessages;
-    const totalMessages = totalServiceMessages + utilityTemplates + marketingBlasts;
+    const totalMarketingTemplates = surveyBlasts + marketingBlasts;
+    const totalMessages = totalServiceMessages + utilityTemplates + totalMarketingTemplates;
 
     // WhatsApp fees
-    const waUtilityCost = 0; // utility within 24hr window = free
-    const waMarketingCost = rate.marketing * marketingBlasts;
-    const whatsappTotal = waUtilityCost + waMarketingCost;
+    const waMarketingCost = rate.marketing * totalMarketingTemplates;
+    const whatsappTotal = waMarketingCost;
 
     // Bot MD messaging fee
     const botmdMessaging = totalMessages * BOTMD_MSG_FEE;
@@ -71,12 +72,30 @@ export default function PricingCalculator() {
     return {
       coordCredits, faqCredits, schedCredits, totalCredits, aiCreditsCost,
       serviceMessages, schedServiceMessages, totalServiceMessages,
-      utilityTemplates, marketingBlasts,
+      utilityTemplates, totalMarketingTemplates,
       totalMessages,
-      waUtilityCost, waMarketingCost, whatsappTotal,
+      waMarketingCost, whatsappTotal,
       botmdMessaging, grandTotal,
     };
-  }, [rate, patientEnquiries, coordResponsesPerPatient, faqResponsesPerPatient, schedulingRequests, appointmentsPerMonth, marketingBlasts]);
+  }, [rate, patientEnquiries, coordResponsesPerPatient, faqResponsesPerPatient, schedulingRequests, appointmentsPerMonth, surveyBlasts, marketingBlasts]);
+
+  // ── PDF Download ──
+  const handleDownloadPDF = useCallback(async () => {
+    if (!costs) return;
+    const { generatePricingPDF } = await import("./generatePDF");
+    generatePricingPDF({
+      market: selectedMarket,
+      whatsappMarket,
+      patientEnquiries,
+      coordResponsesPerPatient,
+      faqResponsesPerPatient,
+      schedulingRequests,
+      appointmentsPerMonth,
+      surveyBlasts,
+      marketingBlasts,
+      costs,
+    });
+  }, [costs, selectedMarket, whatsappMarket, patientEnquiries, coordResponsesPerPatient, faqResponsesPerPatient, schedulingRequests, appointmentsPerMonth, surveyBlasts, marketingBlasts]);
 
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 py-10">
@@ -124,36 +143,18 @@ export default function PricingCalculator() {
           <Card>
             <SectionHeader icon="🏥" title="Patient Enquiry Volume" />
             <p className="text-sm text-gray-400 mb-4">How many patients message your WhatsApp each month?</p>
-            <BigNumberInput
-              label="Monthly patient enquiries"
-              value={patientEnquiries}
-              onChange={setPatientEnquiries}
-            />
+            <BigNumberInput label="Monthly patient enquiries" value={patientEnquiries} onChange={setPatientEnquiries} />
           </Card>
 
           {/* 2. AI Agent Responses per Patient */}
           <Card>
             <SectionHeader icon="🤖" title="AI Agent Responses per Patient" />
             <p className="text-sm text-gray-400 mb-4">
-              Each patient enquiry triggers AI agents. Adjust the average number of responses per patient.
+              Each patient enquiry triggers AI agents. Adjust the average responses per patient.
             </p>
             <div className="space-y-3">
-              <AgentPerPatientRow
-                agent="Coordinating Agent"
-                description="Greets the patient, takes consent"
-                creditsPerResponse={1}
-                responsesPerPatient={coordResponsesPerPatient}
-                onChangeResponses={setCoordResponsesPerPatient}
-                patients={patientEnquiries}
-              />
-              <AgentPerPatientRow
-                agent="FAQ Agent"
-                description="Answers questions about clinic hours, location, services"
-                creditsPerResponse={1}
-                responsesPerPatient={faqResponsesPerPatient}
-                onChangeResponses={setFaqResponsesPerPatient}
-                patients={patientEnquiries}
-              />
+              <AgentPerPatientRow agent="Coordinating Agent" description="Greets the patient, takes consent" creditsPerResponse={1} responsesPerPatient={coordResponsesPerPatient} onChangeResponses={setCoordResponsesPerPatient} patients={patientEnquiries} />
+              <AgentPerPatientRow agent="FAQ Agent" description="Answers questions about clinic hours, location, services" creditsPerResponse={1} responsesPerPatient={faqResponsesPerPatient} onChangeResponses={setFaqResponsesPerPatient} patients={patientEnquiries} />
             </div>
           </Card>
 
@@ -165,11 +166,7 @@ export default function PricingCalculator() {
             </p>
             <div className="flex items-start gap-4">
               <div className="flex-1">
-                <BigNumberInput
-                  label="Scheduling requests / month"
-                  value={schedulingRequests}
-                  onChange={setSchedulingRequests}
-                />
+                <BigNumberInput label="Scheduling requests / month" value={schedulingRequests} onChange={setSchedulingRequests} />
               </div>
               <div className="pt-7 text-xs text-gray-400 flex-shrink-0 text-right">
                 <span className="block font-medium text-[var(--botmd-navy)]">{num(schedulingRequests * 3)} credits</span>
@@ -186,11 +183,7 @@ export default function PricingCalculator() {
             </p>
             <div className="flex items-start gap-4">
               <div className="flex-1">
-                <BigNumberInput
-                  label="Appointments / month"
-                  value={appointmentsPerMonth}
-                  onChange={setAppointmentsPerMonth}
-                />
+                <BigNumberInput label="Appointments / month" value={appointmentsPerMonth} onChange={setAppointmentsPerMonth} />
               </div>
               <div className="pt-7 text-xs text-gray-400 flex-shrink-0 text-right">
                 <span className="block font-medium text-[var(--botmd-navy)]">{num(appointmentsPerMonth * 2)} utility templates</span>
@@ -205,17 +198,34 @@ export default function PricingCalculator() {
             </div>
           </Card>
 
-          {/* 5. Optional: Marketing Blasts */}
+          {/* 5. Patient Surveys & Reminders → Marketing Templates */}
+          <Card>
+            <SectionHeader icon="📋" title="Patient Surveys &amp; Reminders" />
+            <p className="text-sm text-gray-400 mb-4">
+              Outbound patient satisfaction surveys and health reminders. These are classified as <strong>marketing templates</strong> by WhatsApp.
+            </p>
+            <div className="flex items-start gap-4">
+              <div className="flex-1">
+                <BigNumberInput label="Survey / reminder messages per month" value={surveyBlasts} onChange={setSurveyBlasts} />
+              </div>
+              <div className="pt-7 text-xs text-gray-400 flex-shrink-0 text-right">
+                {rate && (
+                  <>
+                    <span className="block font-medium text-[var(--botmd-navy)]">{fmt(rate.marketing * surveyBlasts)}</span>
+                    <span>WhatsApp marketing rate</span>
+                  </>
+                )}
+              </div>
+            </div>
+          </Card>
+
+          {/* 6. Optional: Marketing Blasts */}
           <Card>
             <SectionHeader icon="📢" title="Marketing Blasts (optional)" />
             <p className="text-sm text-gray-400 mb-4">
-              Proactive marketing campaigns sent to patients (charged by WhatsApp).
+              Proactive marketing campaigns sent to patients (charged by WhatsApp as marketing templates).
             </p>
-            <BigNumberInput
-              label="Marketing template messages / month"
-              value={marketingBlasts}
-              onChange={setMarketingBlasts}
-            />
+            <BigNumberInput label="Marketing template messages / month" value={marketingBlasts} onChange={setMarketingBlasts} />
           </Card>
         </div>
 
@@ -241,36 +251,32 @@ export default function PricingCalculator() {
               <SummaryCard>
                 <h3 className="font-semibold text-[var(--botmd-navy)] text-sm mb-3">How it adds up</h3>
 
-                {/* Messages */}
                 <p className="text-[10px] text-gray-400 uppercase tracking-widest mb-1">Messages Sent</p>
                 <div className="space-y-1.5 text-sm mb-4">
                   <SummaryRow label="AI replies (service)" detail={`${num(costs.totalServiceMessages)} msgs`} sub="Free from WhatsApp" />
                   <SummaryRow label="Confirmations + reminders" detail={`${num(costs.utilityTemplates)} utility`} sub="Free within 24hr window" />
-                  {costs.marketingBlasts > 0 && (
-                    <SummaryRow label="Marketing blasts" detail={`${num(costs.marketingBlasts)} msgs`} />
+                  {costs.totalMarketingTemplates > 0 && (
+                    <SummaryRow label="Surveys + marketing" detail={`${num(costs.totalMarketingTemplates)} msgs`} />
                   )}
                   <div className="text-xs text-gray-400 pt-1">Total: {num(costs.totalMessages)} messages</div>
                 </div>
 
-                {/* WhatsApp Fees */}
                 <p className="text-[10px] text-gray-400 uppercase tracking-widest mb-1">WhatsApp Channel Fees</p>
                 <div className="space-y-1.5 text-sm mb-4">
                   <CostRow label="Service messages" amount={0} free />
                   <CostRow label="Utility templates" detail="within 24hr window" amount={0} free />
-                  {costs.marketingBlasts > 0 && (
-                    <CostRow label="Marketing" detail={`${num(costs.marketingBlasts)} msgs`} amount={costs.waMarketingCost} />
+                  {costs.totalMarketingTemplates > 0 && (
+                    <CostRow label="Marketing templates" detail={`${num(costs.totalMarketingTemplates)} msgs`} amount={costs.waMarketingCost} />
                   )}
                   <Divider />
                   <CostRow label="WhatsApp subtotal" amount={costs.whatsappTotal} bold />
                 </div>
 
-                {/* Bot MD Messaging */}
                 <p className="text-[10px] text-gray-400 uppercase tracking-widest mb-1">Bot MD Messaging</p>
                 <div className="space-y-1.5 text-sm mb-4">
                   <CostRow label="Messages delivered" detail={`${num(costs.totalMessages)} × $0.005`} amount={costs.botmdMessaging} />
                 </div>
 
-                {/* AI Credits */}
                 <p className="text-[10px] text-gray-400 uppercase tracking-widest mb-1">Bot MD AI Credits</p>
                 <div className="space-y-1.5 text-sm">
                   <CostRow label="Coordinating" detail={`${num(costs.coordCredits)} cr`} amount={costs.coordCredits * CREDIT_PRICE} />
@@ -304,6 +310,21 @@ export default function PricingCalculator() {
                   {fmt(costs.grandTotal / patientEnquiries)}
                 </p>
               </div>
+            )}
+
+            {/* Download PDF */}
+            {costs && (
+              <button
+                onClick={handleDownloadPDF}
+                className="w-full flex items-center justify-center gap-2 rounded-2xl border border-gray-200 bg-white px-4 py-3.5 text-sm font-semibold text-[var(--botmd-navy)] hover:bg-gray-50 hover:border-[var(--botmd-blue)] transition-all cursor-pointer shadow-sm"
+              >
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                  <polyline points="7 10 12 15 17 10" />
+                  <line x1="12" y1="15" x2="12" y2="3" />
+                </svg>
+                Download PDF Report
+              </button>
             )}
           </div>
         </div>
@@ -350,8 +371,7 @@ function BigNumberInput({ label, value, onChange }: {
   return (
     <div>
       <label className="text-sm font-medium text-[var(--botmd-navy)] block mb-1">{label}</label>
-      <input
-        type="number" min={0} value={value}
+      <input type="number" min={0} value={value}
         onChange={(e) => onChange(Math.max(0, Number(e.target.value)))}
         className="w-full border border-gray-200 rounded-xl px-4 py-3 bg-white text-lg font-semibold text-[var(--botmd-navy)] focus:ring-2 focus:ring-[var(--botmd-blue)] focus:border-transparent outline-none transition"
       />
@@ -375,8 +395,7 @@ function AgentPerPatientRow({ agent, description, creditsPerResponse, responsesP
       <p className="text-xs text-gray-400 mb-3">{description}</p>
       <div className="flex items-center gap-3">
         <div className="flex items-center gap-2 flex-1">
-          <input
-            type="number" min={0} value={responsesPerPatient}
+          <input type="number" min={0} value={responsesPerPatient}
             onChange={(e) => onChangeResponses(Math.max(0, Number(e.target.value)))}
             className="w-20 border border-gray-200 rounded-lg px-3 py-2 text-center font-semibold text-[var(--botmd-navy)] bg-white focus:ring-2 focus:ring-[var(--botmd-blue)] focus:border-transparent outline-none transition"
           />
