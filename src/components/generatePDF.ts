@@ -31,6 +31,7 @@ interface PDFData {
     utilityTemplates: number;
     totalMarketingTemplates: number;
     totalMessages: number;
+    waUtilityCost: number;
     waMarketingCost: number;
     whatsappTotal: number;
     botmdMessaging: number;
@@ -126,7 +127,7 @@ export function generatePricingPDF(data: PDFData) {
 
   const messages = [
     ["AI replies (service messages)", `${num(data.costs.totalServiceMessages)} msgs`, "Free from WhatsApp"],
-    ["Confirmations + reminders (utility)", `${num(data.costs.utilityTemplates)} msgs`, "Free within 24hr window"],
+    ["Confirmations + reminders (utility)", `${num(data.costs.utilityTemplates)} msgs`, fmt(data.costs.waUtilityCost)],
     ...(data.surveyBlasts > 0 ? [["Patient surveys & reminders (marketing)", `${num(data.surveyBlasts)} msgs`, fmt(mktRate * data.surveyBlasts)]] : []),
     ...(data.marketingBlasts > 0 ? [["Marketing blasts (marketing)", `${num(data.marketingBlasts)} msgs`, fmt(mktRate * data.marketingBlasts)]] : []),
     ["Total messages", `${num(data.costs.totalMessages)} msgs`, ""],
@@ -141,7 +142,7 @@ export function generatePricingPDF(data: PDFData) {
   const breakdown = [
     ["WhatsApp Channel Fees", "", ""],
     ["  Service messages", "Free from WhatsApp", "$0.00"],
-    ["  Utility templates (within 24hr)", "Free from WhatsApp", "$0.00"],
+    ["  Utility templates", `${num(data.costs.utilityTemplates)} msgs`, fmt(data.costs.waUtilityCost)],
     ...(data.surveyBlasts > 0 ? [["  Surveys & reminders", `${num(data.surveyBlasts)} msgs`, fmt(mktRate * data.surveyBlasts)]] : []),
     ...(data.marketingBlasts > 0 ? [["  Marketing blasts", `${num(data.marketingBlasts)} msgs`, fmt(mktRate * data.marketingBlasts)]] : []),
     ["  Subtotal", "", fmt(data.costs.whatsappTotal)],
@@ -180,7 +181,7 @@ export function generatePricingPDF(data: PDFData) {
   doc.setFont("helvetica", "normal");
   const disclaimers = [
     "WhatsApp rates effective January 1, 2026. Rates subject to change by Meta.",
-    "Service and utility messages within the 24hr customer service window are free from WhatsApp.",
+    "Service messages within the 24hr customer service window are free from WhatsApp.",
     "Volume tier discounts not included. Actual costs may vary.",
     `Generated on ${today} by Bot MD Pricing Calculator.`,
   ];
@@ -247,7 +248,7 @@ function drawTable(doc: jsPDF, rows: string[][], y: number, margin: number, cont
       doc.setTextColor(GRAY);
       doc.text(row[1], margin + contentW * 0.55, y);
 
-      if (row[2] === "Free from WhatsApp" || row[2] === "Free within 24hr window") {
+      if (row[2] === "Free from WhatsApp") {
         doc.setTextColor(CYAN);
         doc.setFont("helvetica", "bold");
       } else {

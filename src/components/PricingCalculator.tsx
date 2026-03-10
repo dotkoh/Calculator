@@ -71,8 +71,9 @@ export default function PricingCalculator() {
     const totalMessages = totalServiceMessages + utilityTemplates + totalMarketingTemplates;
 
     // WhatsApp fees
+    const waUtilityCost = rate.utility * utilityTemplates;
     const waMarketingCost = rate.marketing * totalMarketingTemplates;
-    const whatsappTotal = waMarketingCost;
+    const whatsappTotal = waUtilityCost + waMarketingCost;
 
     // Bot MD messaging fee
     const botmdMessaging = totalMessages * BOTMD_MSG_FEE;
@@ -85,7 +86,7 @@ export default function PricingCalculator() {
       serviceMessages, schedServiceMessages, totalServiceMessages,
       utilityTemplates, totalMarketingTemplates,
       totalMessages,
-      waMarketingCost, whatsappTotal,
+      waUtilityCost, waMarketingCost, whatsappTotal,
       botmdMessaging, grandTotal,
     };
   }, [rate, selectedPlan, patientEnquiries, coordResponsesPerPatient, faqResponsesPerPatient, schedulingRequests, appointmentsPerMonth, surveyBlasts, marketingBlasts]);
@@ -227,7 +228,7 @@ export default function PricingCalculator() {
           <Card>
             <SectionHeader icon="✅" title="Appointment Confirmations &amp; Reminders" />
             <p className="text-sm text-gray-400 mb-4">
-              Each appointment triggers 1 booking confirmation + 1 reminder (utility templates).
+              Each appointment triggers 1 booking confirmation + 1 reminder (utility templates, charged at the WhatsApp utility rate).
             </p>
             <div className="flex items-start gap-4">
               <div className="flex-1">
@@ -235,14 +236,10 @@ export default function PricingCalculator() {
               </div>
               <div className="pt-7 text-xs text-gray-400 flex-shrink-0 text-right">
                 <span className="block font-medium text-[var(--botmd-navy)]">{num(appointmentsPerMonth * 2)} utility templates</span>
-                <span>1 confirmation + 1 reminder</span>
+                {rate && (
+                  <span>{fmt(rate.utility * appointmentsPerMonth * 2)} WhatsApp fees</span>
+                )}
               </div>
-            </div>
-            <div className="mt-3 p-3 rounded-lg bg-[var(--botmd-cyan-light)] border border-[#c0eeec]">
-              <p className="text-xs text-[#007a70]">
-                Utility templates sent in response to a patient within the 24hr service window are <strong>free</strong> from WhatsApp.
-                Proactive reminders outside the window are charged at the utility rate.
-              </p>
             </div>
           </Card>
 
@@ -302,7 +299,7 @@ export default function PricingCalculator() {
                 <p className="text-[10px] text-gray-400 uppercase tracking-widest mb-1">Messages Sent</p>
                 <div className="space-y-1.5 text-sm mb-4">
                   <SummaryRow label="AI replies (service)" detail={`${num(costs.totalServiceMessages)} msgs`} sub="Free from WhatsApp" />
-                  <SummaryRow label="Confirmations + reminders" detail={`${num(costs.utilityTemplates)} utility`} sub="Free within 24hr window" />
+                  <SummaryRow label="Confirmations + reminders" detail={`${num(costs.utilityTemplates)} utility`} />
                   {costs.totalMarketingTemplates > 0 && (
                     <SummaryRow label="Surveys + marketing" detail={`${num(costs.totalMarketingTemplates)} msgs`} />
                   )}
@@ -312,7 +309,7 @@ export default function PricingCalculator() {
                 <p className="text-[10px] text-gray-400 uppercase tracking-widest mb-1">WhatsApp Channel Fees</p>
                 <div className="space-y-1.5 text-sm mb-4">
                   <CostRow label="Service messages" amount={0} free />
-                  <CostRow label="Utility templates" detail="within 24hr window" amount={0} free />
+                  <CostRow label="Utility templates" detail={`${num(costs.utilityTemplates)} msgs`} amount={costs.waUtilityCost} />
                   {costs.totalMarketingTemplates > 0 && (
                     <CostRow label="Marketing templates" detail={`${num(costs.totalMarketingTemplates)} msgs`} amount={costs.waMarketingCost} />
                   )}
@@ -386,7 +383,7 @@ export default function PricingCalculator() {
       {/* Footer */}
       <footer className="mt-12 text-center text-xs text-gray-400 space-y-1">
         <p>WhatsApp rates effective January 1, 2026. Rates subject to change by Meta.</p>
-        <p>Service and utility messages within the 24hr customer service window are free from WhatsApp.</p>
+        <p>Service messages within the 24hr customer service window are free from WhatsApp.</p>
         <p>Volume tier discounts not included. Actual costs may vary.</p>
       </footer>
     </div>
