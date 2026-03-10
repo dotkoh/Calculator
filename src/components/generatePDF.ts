@@ -44,32 +44,62 @@ function fmt(v: number) {
 }
 function num(v: number) { return v.toLocaleString(); }
 
-export function generatePricingPDF(data: PDFData) {
+async function loadLogoAsDataURL(): Promise<string | null> {
+  try {
+    const res = await fetch("/botmd-logo.png");
+    const blob = await res.blob();
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result as string);
+      reader.onerror = () => resolve(null);
+      reader.readAsDataURL(blob);
+    });
+  } catch {
+    return null;
+  }
+}
+
+export async function generatePricingPDF(data: PDFData) {
   const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
   const pw = doc.internal.pageSize.getWidth();
   const margin = 20;
   const contentW = pw - margin * 2;
   let y = 20;
 
-  // ── Header ──
-  doc.setFillColor(BLUE);
-  doc.rect(0, 0, pw, 48, "F");
+  // Load logo
+  const logoDataURL = await loadLogoAsDataURL();
 
-  doc.setTextColor("#FFFFFF");
-  doc.setFontSize(22);
-  doc.setFont("helvetica", "bold");
-  doc.text("botmd", margin, 22);
+  // ── Header ──
+  const today = new Date().toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" });
+
+  // Logo + title on white background
+  if (logoDataURL) {
+    // Logo is 1000×367 (2.72:1 ratio); fit to 38mm wide × 14mm tall
+    doc.addImage(logoDataURL, "PNG", margin, 12, 38, 14);
+  } else {
+    doc.setTextColor(BLUE);
+    doc.setFontSize(22);
+    doc.setFont("helvetica", "bold");
+    doc.text("botmd", margin, 22);
+  }
+
   doc.setFontSize(14);
-  doc.setFont("helvetica", "normal");
-  doc.text("Pricing Estimate", margin, 32);
+  doc.setTextColor(NAVY);
+  doc.setFont("helvetica", "bold");
+  doc.text("Pricing Estimate", margin, 34);
 
   doc.setFontSize(9);
-  doc.setTextColor("#BBDEFB");
-  const today = new Date().toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" });
-  doc.text(today, pw - margin, 22, { align: "right" });
-  doc.text(`${data.planName} Plan · ${data.market} (${data.whatsappMarket})`, pw - margin, 30, { align: "right" });
+  doc.setTextColor(GRAY);
+  doc.setFont("helvetica", "normal");
+  doc.text(today, pw - margin, 18, { align: "right" });
+  doc.text(`${data.planName} Plan · ${data.market} (${data.whatsappMarket})`, pw - margin, 25, { align: "right" });
 
-  y = 58;
+  // Blue accent line under header
+  doc.setDrawColor(BLUE);
+  doc.setLineWidth(1.2);
+  doc.line(margin, 40, margin + contentW, 40);
+
+  y = 48;
 
   // ── Grand Total Box ──
   doc.setFillColor("#EFF6FF");

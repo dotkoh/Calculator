@@ -95,7 +95,7 @@ export default function PricingCalculator() {
   const handleDownloadPDF = useCallback(async () => {
     if (!costs) return;
     const { generatePricingPDF } = await import("./generatePDF");
-    generatePricingPDF({
+    await generatePricingPDF({
       market: selectedMarket,
       whatsappMarket,
       planName: costs.planLabel,
